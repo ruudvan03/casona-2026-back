@@ -10,10 +10,6 @@ class Reservation extends Model
 {
     use HasFactory;
 
-    /**
-     * Atributos que se pueden asignar de forma masiva.
-     * Se agregó 'folio' para permitir su almacenamiento.
-     */
     protected $fillable = [
         'folio',
         'room_id',
@@ -24,42 +20,33 @@ class Reservation extends Model
         'check_out',
         'total_price',
         'status',
+        'payment_method', 
     ];
 
-    /**
-     * Lógica para generar el Folio automáticamente al crear la reserva.
-     */
     protected static function booted()
     {
         static::creating(function ($reservation) {
-            // Calculamos el siguiente ID disponible
             $nextId = (self::max('id') ?? 0) + 1;
-            
-            // Formato: CAS - Año Actual - ID con 4 ceros (ej. CAS-2026-0001)
             $reservation->folio = 'CAS-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
         });
     }
 
     /**
-     * Scope para verificar traslape de fechas.
-     * Evita que se reserven fechas ya ocupadas en La Casona.
+     * Lógica de Disponibilidad Optimizada
+     * Se asegura de que si alguien sale el 10, otro pueda entrar el 10.
      */
     public function scopeOverlapping(Builder $query, $roomId, $start, $end)
     {
         return $query->where('room_id', $roomId)
+                     ->where('status', '!=', 'cancelled') // Ignorar reservaciones canceladas
                      ->where(function ($q) use ($start, $end) {
-                         $q->whereBetween('check_in', [$start, $end])
-                           ->orWhereBetween('check_out', [$start, $end])
-                           ->orWhere(function ($sub) use ($start, $end) {
-                               $sub->where('check_in', '<=', $start)
-                                   ->where('check_out', '>=', $end);
-                           });
+                         $q->where(function ($sub) use ($start, $end) {
+                             $sub->where('check_in', '<', $end)
+                                 ->where('check_out', '>', $start);
+                         });
                      });
     }
 
-    /**
-     * Relación: Una reservación pertenece a una habitación.
-     */
     public function room()
     {
         return $this->belongsTo(Room::class);

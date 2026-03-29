@@ -12,16 +12,18 @@ class RoomReserved extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $data;
-    public $folio;
+    /**
+     * Variable pública para que esté disponible en la vista Blade.
+     */
+    public $reservation;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($data, $folio)
+    public function __construct($reservation)
     {
-        $this->data = $data;
-        $this->folio = $folio;
+        // Recibimos el objeto completo desde el controlador
+        $this->reservation = $reservation;
     }
 
     /**
@@ -30,7 +32,7 @@ class RoomReserved extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmación de Solicitud - La Casona',
+            subject: 'Confirmación de Reserva ' . $this->reservation->folio . ' - La Casona',
         );
     }
 
@@ -40,7 +42,15 @@ class RoomReserved extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.room_reserved', // Esta es la vista HTML que vamos a crear
+            view: 'emails.room_reserved', 
         );
+    }
+
+    /**
+     * Get the attachments for the message.
+     */
+    public function attachments(): array
+    {
+        return [];
     }
 }
